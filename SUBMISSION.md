@@ -16,7 +16,7 @@ A voice-enabled Retrieval-Augmented Generation (RAG) pipeline built on the
 embedded and searched across three separate FAISS indices built with deliberately
 different chunking strategies (fixed-size with overlap, sentence/semantic boundary-aware,
 and metadata-aware with provenance tagging) → a weighted hybrid merge across all three
-strategies returns the top-N passages → Claude generates a structured JSON answer
+strategies returns the top-N passages → Google Gemini generates a structured JSON answer
 (answer + cited chunk IDs + confidence score) grounded strictly in the retrieved context
 → three sequential guardrail checks (unsafe input filter, off-topic/relevance filter,
 groundedness/hallucination check) decide whether to surface the answer or return a
@@ -36,12 +36,12 @@ Exactly the packages in `requirements.txt` — nothing more:
 | Speech-to-Text | ElevenLabs API (`elevenlabs`) | 1.9.0 |
 | Embedding model | `sentence-transformers` / `paraphrase-multilingual-MiniLM-L12-v2` | 3.1.1 |
 | Vector store | `faiss-cpu` (IndexFlatIP, cosine sim) | 1.8.0.post1 |
-| LLM generation | Anthropic Claude (`anthropic`) | 0.34.2 |
+| LLM generation | Google Gemini (`google-genai` / `gemini-2.5-flash`) | 2.18.1 |
 | API server | FastAPI + uvicorn | 0.115.0 / 0.30.6 |
 | Data loading | HuggingFace `datasets` (streaming) | 2.21.0 |
 | Retries | `tenacity` | 9.0.0 |
 | Sentence splitting | `nltk` | 3.9.1 |
-| Validation | `pydantic` v2 | 2.9.2 |
+| Validation | `pydantic` v2 | 2.13.4 |
 | HTTP extras | `python-multipart`, `uvicorn[standard]` | — |
 
 ---
