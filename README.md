@@ -1,3 +1,13 @@
+---
+title: Voice RAG Goa
+emoji: 🎙️
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Voice-Enabled RAG — HH Goa 2026, Task 2
 
 Pipeline: **Voice input → Speech-to-Text (ElevenLabs) → Multi-strategy chunking/retrieval (FAISS) → Grounded answer generation**, wrapped in a retry/error-handling harness with guardrails, and benchmarked for P50/P70/P100 latency.

@@ -1,17 +1,18 @@
 # Latency Benchmark Results
 
-n_queries: 30
+n_queries: 20
 
-status_breakdown: {'error': 30}
+status_breakdown: {'ok': 12, 'refused_ungrounded': 8}
 
 
 | stage | P50 (ms) | P70 (ms) | P100/max (ms) | mean (ms) |
 |---|---|---|---|---|
-| guardrail_unsafe_ms | 0.024 | 0.034 | 0.659 | 0.064 |
-| embed_query_ms | 32.13 | 47.449 | 104.671 | 42.071 |
-| retrieve_ms | 2.768 | 5.378 | 102.591 | 9.233 |
-| guardrail_off_topic_ms | 0.005 | 0.006 | 0.064 | 0.009 |
-| total_retrieval_side_ms | 38.722 | 52.396 | 207.386 | 51.394 |
-| generation_ms | 505.649 | 505.773 | 523.214 | 506.09 |
+| guardrail_unsafe_ms | 0.148 | 0.202 | 0.379 | 0.163 |
+| embed_query_ms | 102.29 | 143.891 | 265.989 | 130.354 |
+| retrieve_ms | 4.723 | 12.073 | 27.213 | 7.96 |
+| guardrail_off_topic_ms | 0.01 | 0.016 | 0.085 | 0.017 |
+| total_retrieval_side_ms | 116.262 | 150.007 | 280.189 | 138.535 |
+| generation_ms | 1145.116 | 1291.967 | 3397.078 | 1297.905 |
+| guardrail_groundedness_ms | 0.258 | 0.29 | 0.932 | 0.286 |
 
-**Retrieval-side P70 vs 200ms target: 52.396ms -> PASS**
+**Retrieval-side P70 vs 200ms target: 150.007ms -> PASS**

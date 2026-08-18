@@ -1,0 +1,58 @@
+{
+  "n_queries": 20,
+  "status_breakdown": {
+    "ok": 12,
+    "refused_ungrounded": 8
+  },
+  "stages": {
+    "guardrail_unsafe_ms": {
+      "p50_ms": 0.148,
+      "p70_ms": 0.202,
+      "p100_ms": 0.379,
+      "mean_ms": 0.163,
+      "n": 20
+    },
+    "embed_query_ms": {
+      "p50_ms": 102.29,
+      "p70_ms": 143.891,
+      "p100_ms": 265.989,
+      "mean_ms": 130.354,
+      "n": 20
+    },
+    "retrieve_ms": {
+      "p50_ms": 4.723,
+      "p70_ms": 12.073,
+      "p100_ms": 27.213,
+      "mean_ms": 7.96,
+      "n": 20
+    },
+    "guardrail_off_topic_ms": {
+      "p50_ms": 0.01,
+      "p70_ms": 0.016,
+      "p100_ms": 0.085,
+      "mean_ms": 0.017,
+      "n": 20
+    },
+    "total_retrieval_side_ms": {
+      "p50_ms": 116.262,
+      "p70_ms": 150.007,
+      "p100_ms": 280.189,
+      "mean_ms": 138.535,
+      "n": 20
+    },
+    "generation_ms": {
+      "p50_ms": 1145.116,
+      "p70_ms": 1291.967,
+      "p100_ms": 3397.078,
+      "mean_ms": 1297.905,
+      "n": 20
+    },
+    "guardrail_groundedness_ms": {
+      "p50_ms": 0.258,
+      "p70_ms": 0.29,
+      "p100_ms": 0.932,
+      "mean_ms": 0.286,
+      "n": 20
+    }
+  }
+}

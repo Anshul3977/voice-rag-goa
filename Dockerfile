@@ -7,10 +7,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Build the index at image build time is possible but slow; safer to run it
-# once at container start if the store is missing (see entrypoint below).
 ENV DATA_DIR=/app/data/store
-ENV PORT=8000
+ENV PORT=7860
+
+EXPOSE 7860
 
 CMD sh -c "\
     if [ ! -f \"$DATA_DIR/semantic.faiss\" ]; then \

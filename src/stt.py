@@ -1,6 +1,9 @@
 import os
+from dotenv import load_dotenv
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
+
+load_dotenv()
 
 ELEVENLABS_STT_URL = "https://api.elevenlabs.io/v1/speech-to-text"
 

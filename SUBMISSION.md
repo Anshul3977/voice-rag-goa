@@ -4,7 +4,7 @@
 https://github.com/Anshul3977/voice-rag-goa
 
 ## Live Working Link
-**TBD** — *(Note for evaluators: First request after inactivity may take 30–60s to wake the free-tier container — this is standard cold-start behavior, not a failure).*
+**TBD** *(Hugging Face Space)* — *(Note for evaluators: If the Space has been inactive for over 48 hours, the container may take ~30–60s to wake up on the first request — this is standard free-tier behavior, not a failure).*
 
 ---
 
