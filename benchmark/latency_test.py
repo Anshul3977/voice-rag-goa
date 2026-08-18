@@ -97,6 +97,10 @@ def main():
             status_str = result.status.value if hasattr(result.status, "value") else str(result.status)
             statuses[status_str] = statuses.get(status_str, 0) + 1
 
+            gen_t = result.timings_ms.get("generation_ms", 0.0)
+            ret_t = result.timings_ms.get("total_retrieval_side_ms", 0.0)
+            print(f"[{idx+1:2d}/{len(queries)}] status={status_str:<18} | retrieval={ret_t:6.1f}ms | gen={gen_t:7.1f}ms | query='{q[:40]}'", flush=True)
+
             for k, v in result.timings_ms.items():
                 # Exclude failed retry backoff times from generation timing percentiles
                 if status_str == "error" and k in ("generation_ms", "guardrail_groundedness_ms"):
