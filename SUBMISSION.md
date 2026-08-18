@@ -97,12 +97,12 @@ measurement so steady-state behavior is measured:
 
 | Stage | P50 (ms) | P70 (ms) | P100 / Max (ms) | Mean (ms) | Samples ($n$) |
 |---|---|---|---|---|---|
-| `generation_ms` | **1322.379** | **1367.735** | **3076.139** | **1390.292** | 20 / 20 |
-| `guardrail_groundedness_ms` | **0.328** | **0.405** | **0.597** | **0.311** | 20 / 20 |
+| `generation_ms` | **1145.116** | **1291.967** | **3397.078** | **1297.905** | 20 / 20 |
+| `guardrail_groundedness_ms` | **0.258** | **0.290** | **0.932** | **0.286** | 20 / 20 |
 
 **Guardrail & Harness Status Breakdown (20 queries evaluated with 4.2s pacing — 100% completion):**
-- `ok`: **16 queries (80%)** — passed all three guardrails with verified citations and high confidence.
-- `refused_ungrounded`: **4 queries (20%)** — groundedness guardrail actively caught and refused responses attempting to use unretrieved/outside knowledge.
+- `ok`: **12 queries (60%)** — passed all three guardrails with verified citations and high confidence.
+- `refused_ungrounded`: **8 queries (40%)** — groundedness guardrail actively caught and refused responses attempting to use unretrieved/outside knowledge.
 - `error`: **0 queries (0%)** — zero rate limits or harness errors with `gemini-3.5-flash-lite`.
 
 ### Req 5 — Harness: structured orchestration, retries, typed I/O
