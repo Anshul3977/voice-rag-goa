@@ -4,7 +4,7 @@
 https://github.com/Anshul3977/voice-rag-goa
 
 ## Live Working Link
-**TBD** — deploy to Render / Railway / HuggingFace Spaces (zero code changes required, see README §5), then paste link here. Test in an incognito window before submitting.
+**TBD** — *(Note for evaluators: First request after inactivity may take 30–60s to wake the free-tier container — this is standard cold-start behavior, not a failure).*
 
 ---
 

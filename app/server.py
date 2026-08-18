@@ -34,6 +34,11 @@ class TextQuery(BaseModel):
     query: str
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.get("/")
 def root():
     return FileResponse(os.path.join(os.path.dirname(__file__), "static", "index.html"))
