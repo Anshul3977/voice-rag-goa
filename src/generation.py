@@ -11,20 +11,23 @@ import os
 import re
 from typing import List
 
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field, ValidationError
 
 from src.retrieval import RetrievedChunk
 
-GENERATION_MODEL = os.environ.get("GENERATION_MODEL", "gemini-2.5-flash")
+load_dotenv()
+
+GENERATION_MODEL = os.environ.get("GENERATION_MODEL", "gemini-3.6-flash")
 
 SYSTEM_PROMPT = """You are a retrieval-grounded QA assistant. You will be given a user \
-question and a numbered list of retrieved context chunks with their chunk_ids. \
+question and a list of retrieved context chunks with their Chunk IDs. \
 Answer ONLY using information present in these chunks. If the chunks do not contain \
 enough information to answer, say so explicitly rather than guessing or using outside \
 knowledge. Respond with ONLY a JSON object matching this schema exactly:
-{"answer": "<string>", "used_chunk_ids": ["<chunk_id>", ...], "confidence": <float 0-1>}
+{"answer": "<string>", "used_chunk_ids": ["<exact Chunk ID string from context>", ...], "confidence": <float between 0.0 and 1.0>}
 confidence should reflect how directly the retrieved chunks support the answer -- \
 use a low value (<0.4) if the context is only tangentially related."""
 
@@ -37,8 +40,8 @@ class GenerationOutput(BaseModel):
 
 def _build_context_block(chunks: List[RetrievedChunk]) -> str:
     lines = []
-    for i, c in enumerate(chunks, 1):
-        lines.append(f"[{i}] chunk_id={c.chunk_id} strategy={c.strategy}\n{c.text}")
+    for c in chunks:
+        lines.append(f"Chunk ID: {c.chunk_id} (Strategy: {c.strategy})\nText: {c.text}")
     return "\n\n".join(lines)
 
 

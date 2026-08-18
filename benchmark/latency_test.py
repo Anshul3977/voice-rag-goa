@@ -94,13 +94,17 @@ def main():
 
         for idx, q in enumerate(queries):
             result = pipeline.run(q)
+            status_str = result.status.value if hasattr(result.status, "value") else str(result.status)
+            statuses[status_str] = statuses.get(status_str, 0) + 1
+
             for k, v in result.timings_ms.items():
+                # Exclude failed retry backoff times from generation timing percentiles
+                if status_str == "error" and k in ("generation_ms", "guardrail_groundedness_ms"):
+                    continue
                 stage_timings.setdefault(k, []).append(v)
                 stage_samples.setdefault(k, []).append((idx, v, q))
-            statuses[result.status.value if hasattr(result.status, "value") else str(result.status)] = (
-                statuses.get(result.status.value if hasattr(result.status, "value") else str(result.status), 0) + 1
-            )
-            time.sleep(2.0)
+
+            time.sleep(4.2)
 
     report = {"n_queries": len(queries), "status_breakdown": statuses, "stages": {}}
     for stage, vals in stage_timings.items():
