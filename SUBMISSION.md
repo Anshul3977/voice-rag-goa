@@ -92,18 +92,18 @@ measurement so steady-state behavior is measured:
 - **Recall@5**: **0.520** (52/100 against ground-truth `is_selected` passages in subset).
 - Full benchmark output stored in [`benchmark/results.md`](benchmark/results.md) and [`benchmark/retrieval_quality.json`](benchmark/retrieval_quality.json).
 
-**LLM Generation Latency & Guardrail Status Breakdown (Google Gemini `gemini-3.6-flash`):**
+**LLM Generation Latency & Guardrail Status Breakdown (Google Gemini `gemini-3.5-flash-lite`):**
 *Note: Generation is network-bound and intentionally reported separately from the sub-200ms retrieval-side budget.*
 
-| Stage | P50 (ms) | P70 (ms) | P100 / Max (ms) | Mean (ms) |
-|---|---|---|---|---|
-| `generation_ms` (steady-state single calls) | ~1106.39 | ~1187.80 | ~1460.88 | ~1175.37 |
-| `guardrail_groundedness_ms` | 0.389 | 0.539 | 0.843 | 0.409 |
+| Stage | P50 (ms) | P70 (ms) | P100 / Max (ms) | Mean (ms) | Samples ($n$) |
+|---|---|---|---|---|---|
+| `generation_ms` | **1322.379** | **1367.735** | **3076.139** | **1390.292** | 20 / 20 |
+| `guardrail_groundedness_ms` | **0.328** | **0.405** | **0.597** | **0.311** | 20 / 20 |
 
-**Guardrail & Harness Status Breakdown (Live end-to-end evaluation):**
-- `ok`: Passed all three guardrails with verified citations and high confidence.
-- `refused_ungrounded`: Groundedness guardrail actively caught and refused responses attempting to use unretrieved/outside knowledge.
-- `error`: Safely intercepted by tenacity retries and harness fallback upon encountering free-tier daily project quota caps without application crashes.
+**Guardrail & Harness Status Breakdown (20 queries evaluated with 4.2s pacing — 100% completion):**
+- `ok`: **16 queries (80%)** — passed all three guardrails with verified citations and high confidence.
+- `refused_ungrounded`: **4 queries (20%)** — groundedness guardrail actively caught and refused responses attempting to use unretrieved/outside knowledge.
+- `error`: **0 queries (0%)** — zero rate limits or harness errors with `gemini-3.5-flash-lite`.
 
 ### Req 5 — Harness: structured orchestration, retries, typed I/O
 ✅ `src/orchestrator.py` — `Pipeline.run()` wraps every stage:
