@@ -14,6 +14,7 @@ import json
 import os
 import random
 import sys
+import time
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -99,6 +100,7 @@ def main():
             statuses[result.status.value if hasattr(result.status, "value") else str(result.status)] = (
                 statuses.get(result.status.value if hasattr(result.status, "value") else str(result.status), 0) + 1
             )
+            time.sleep(2.0)
 
     report = {"n_queries": len(queries), "status_breakdown": statuses, "stages": {}}
     for stage, vals in stage_timings.items():
