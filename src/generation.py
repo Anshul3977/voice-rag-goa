@@ -55,7 +55,12 @@ def generate_answer(query: str, chunks: List[RetrievedChunk]) -> GenerationOutpu
     if not api_key:
         raise ValueError("GEMINI_API_KEY environment variable is not set.")
 
-    client = genai.Client(api_key=api_key)
+    client = genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(
+            retry_options=types.HttpRetryOptions(attempts=1)  # Disable SDK internal retries
+        ),
+    )
     context_block = _build_context_block(chunks)
     user_message = f"Question: {query}\n\nContext chunks:\n{context_block}"
 
