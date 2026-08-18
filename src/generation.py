@@ -20,7 +20,7 @@ from src.retrieval import RetrievedChunk
 
 load_dotenv()
 
-GENERATION_MODEL = os.environ.get("GENERATION_MODEL", "gemini-3.6-flash")
+GENERATION_MODEL = os.environ.get("GENERATION_MODEL", "gemini-3.5-flash-lite")
 
 SYSTEM_PROMPT = """You are a retrieval-grounded QA assistant. You will be given a user \
 question and a list of retrieved context chunks with their Chunk IDs. \
