@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Voice RAG — HH Goa 2026</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
+  button { font-size: 16px; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; }
+  #recordBtn { background: #e11d48; color: white; }
+  #recordBtn.recording { background: #64748b; }
+  #answer { margin-top: 24px; padding: 16px; background: #f8fafc; border-radius: 8px; white-space: pre-wrap; }
+  .meta { color: #64748b; font-size: 13px; margin-top: 8px; }
+  .refused { color: #b91c1c; }
+  .citation { font-size: 12px; color: #475569; border-left: 3px solid #cbd5e1; padding-left: 8px; margin-top: 6px; }
+</style>
+</head>
+<body>
+  <h2>🎙️ Voice RAG — MSMARCO-XI</h2>
+  <p>Press record, ask a question, release to submit.</p>
+  <button id="recordBtn">Hold to Record</button>
+  <div id="status"></div>
+  <div id="answer"></div>
+
+<script>
+let mediaRecorder, chunks = [];
+const btn = document.getElementById('recordBtn');
+const statusEl = document.getElementById('status');
+const answerEl = document.getElementById('answer');
+
+async function startRecording() {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  mediaRecorder = new MediaRecorder(stream);
+  chunks = [];
+  mediaRecorder.ondataavailable = e => chunks.push(e.data);
+  mediaRecorder.onstop = submitAudio;
+  mediaRecorder.start();
+  btn.classList.add('recording');
+  btn.textContent = 'Recording... release to stop';
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  btn.classList.remove('recording');
+  btn.textContent = 'Hold to Record';
+}
+
+async function submitAudio() {
+  statusEl.textContent = 'Transcribing + retrieving + generating...';
+  answerEl.innerHTML = '';
+  const blob = new Blob(chunks, { type: 'audio/webm' });
+  const form = new FormData();
+  form.append('audio', blob, 'query.webm');
+
+  try {
+    const res = await fetch('/ask', { method: 'POST', body: form });
+    const data = await res.json();
+    render(data);
+  } catch (err) {
+    statusEl.textContent = 'Error: ' + err;
+  }
+}
+
+function render(data) {
+  statusEl.textContent = 'Heard: "' + data.transcript + '"';
+  if (data.status !== 'ok') {
+    answerEl.innerHTML = `<div class="refused"><b>Not answered (${data.status})</b><br>${data.refusal_reason || data.error || ''}</div>`;
+    return;
+  }
+  let html = `<b>Answer:</b> ${data.answer}<div class="meta">confidence: ${(data.confidence ?? 0).toFixed(2)}</div>`;
+  (data.citations || []).forEach(c => {
+    html += `<div class="citation">[${c.strategy}] ${c.text.slice(0, 160)}...</div>`;
+  });
+  answerEl.innerHTML = html;
+}
+
+btn.addEventListener('mousedown', startRecording);
+btn.addEventListener('mouseup', stopRecording);
+btn.addEventListener('touchstart', e => { e.preventDefault(); startRecording(); });
+btn.addEventListener('touchend', e => { e.preventDefault(); stopRecording(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+{
+  "n_eval_queries": 100,
+  "k": 5,
+  "recall_at_k": 0.52
+}
