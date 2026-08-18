@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from src.retrieval import RetrievedChunk
 
-GENERATION_MODEL = os.environ.get("GENERATION_MODEL", "claude-3-5-sonnet-20241022")
+GENERATION_MODEL = os.environ.get("GENERATION_MODEL", "claude-haiku-4-5-20251001")
 
 SYSTEM_PROMPT = """You are a retrieval-grounded QA assistant. You will be given a user \
 question and a numbered list of retrieved context chunks with their chunk_ids. \
