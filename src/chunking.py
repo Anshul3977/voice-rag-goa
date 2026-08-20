@@ -73,9 +73,9 @@ def chunk_semantic(text: str, max_words: int = 80) -> List[str]:
 def build_all_chunks(passages: List[Dict]) -> Dict[str, List[Dict]]:
     """
     passages: [{doc_id, text, source_query}, ...]
-    returns: {"fixed": [...chunks...], "semantic": [...], "metadata_aware": [...]}
+    returns: {"fixed": [...chunks...], "metadata_aware": [...]}
     """
-    result = {"fixed": [], "semantic": [], "metadata_aware": []}
+    result = {"fixed": [], "metadata_aware": []}
 
     for p in passages:
         doc_id, text, source_query = p["doc_id"], p["text"], p.get("source_query", "")
@@ -93,20 +93,8 @@ def build_all_chunks(passages: List[Dict]) -> Dict[str, List[Dict]]:
                 }
             )
 
-        for idx, ch in enumerate(chunk_semantic(text)):
-            result["semantic"].append(
-                {
-                    "chunk_id": _chunk_id(doc_id, "semantic", idx),
-                    "text": ch,
-                    "doc_id": doc_id,
-                    "strategy": "semantic",
-                    "metadata": {"position": idx},
-                }
-            )
-
-        # metadata_aware reuses the semantic split (best base granularity)
-        # but attaches provenance fields that retrieval/generation can use
-        # for filtering, boosting, and citation.
+        # metadata_aware uses semantic sentence boundaries (never cutting a sentence)
+        # and attaches rich provenance fields for retrieval, filtering, and citations.
         for idx, ch in enumerate(chunk_semantic(text, max_words=80)):
             result["metadata_aware"].append(
                 {

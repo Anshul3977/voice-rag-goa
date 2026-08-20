@@ -13,10 +13,10 @@ https://github.com/Anshul3977/voice-rag-goa
 A voice-enabled Retrieval-Augmented Generation (RAG) pipeline built on the
 [ai4bharat/MSMARCO-XI](https://huggingface.co/datasets/ai4bharat/MSMARCO-XI) dataset
 (Hindi subset). A user speaks a question → ElevenLabs transcribes it → the query is
-embedded and searched across three separate FAISS indices built with deliberately
-different chunking strategies (fixed-size with overlap, sentence/semantic boundary-aware,
-and metadata-aware with provenance tagging) → a weighted hybrid merge across all three
-strategies returns the top-N passages → Google Gemini generates a structured JSON answer
+embedded and searched across FAISS indices built with deliberately different
+chunking strategies (fixed-size with overlap, and sentence/semantic boundary-aware
+with rich provenance tagging) → a weighted hybrid merge across strategies returns
+the top-N passages → Google Gemini generates a structured JSON answer
 (answer + cited chunk IDs + confidence score) grounded strictly in the retrieved context
 → three sequential guardrail checks (unsafe input filter, off-topic/relevance filter,
 groundedness/hallucination check) decide whether to surface the answer or return a
@@ -54,20 +54,22 @@ Exactly the packages in `requirements.txt` — nothing more:
 passing the transcript to the pipeline.
 
 ### Req 2 — Chunking: "vast", not naive fixed-size
-✅ **Three distinct strategies** implemented in `src/chunking.py`, each indexed
-into its own FAISS namespace by `data/prepare_dataset.py`:
+✅ **Distinct strategies** implemented in `src/chunking.py`, indexed into FAISS namespaces:
 
 - **Fixed-size with overlap** (`chunk_fixed`) — sliding word window (60 words /
   15-word overlap); baseline recall, cheap, good for short MS MARCO passages.
-- **Semantic / sentence-boundary** (`chunk_semantic`) — greedily packs whole
+- **Semantic / sentence-boundary aware** (`chunk_semantic`) — greedily packs whole
   sentences up to an 80-word budget; never cuts a sentence mid-thought; better
   precision for factoid QA.
-- **Metadata-aware** — reuses the semantic split but attaches `doc_id`,
-  `source_query`, `query_id`, `is_selected` as first-class chunk metadata;
-  enables provenance filtering, citation, and ground-truth quality checking.
+- **Metadata-aware provenance** (`metadata_aware`) — applies sentence-boundary
+  semantic chunking while attaching `doc_id`, `source_query`, `query_id`, `is_selected`,
+  `position`, and character/word lengths as first-class metadata; enables provenance
+  filtering, chunk citation, and ground-truth quality checking.
 
-Retrieval (`src/retrieval.py`) does a **weighted merge** across all three indices
-(semantic=1.0, metadata_aware=1.0, fixed=0.85) then deduplicates by `doc_id`.
+*Optimization Note:* Semantic and metadata-aware chunking share the same sentence-boundary
+text splitting; to avoid redundant memory and compute overhead, they are unified into the
+`metadata_aware` physical index. Retrieval (`src/retrieval.py`) performs a weighted merge
+(`metadata_aware`=1.0, `fixed`=0.85) and deduplicates by `doc_id`.
 
 ### Req 3 — Latency target: end-to-end < 200 ms
 ✅ The 200 ms budget covers: query embedding + FAISS search across all 3 indices +

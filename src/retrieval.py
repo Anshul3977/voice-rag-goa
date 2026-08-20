@@ -15,7 +15,6 @@ from typing import Dict, List
 from src.indexing import embed_texts, load_index
 
 STRATEGY_WEIGHTS = {
-    "semantic": 1.0,
     "metadata_aware": 1.0,
     "fixed": 0.85,
 }
