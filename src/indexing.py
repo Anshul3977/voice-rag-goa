@@ -78,5 +78,22 @@ def load_index(strategy: str, store_dir: str):
         )
     index = faiss.read_index(index_path)
     with open(meta_path, "r", encoding="utf-8") as f:
-        chunks = json.load(f)
+        raw_chunks = json.load(f)
+    
+    # Prune unneeded fields (char_len, word_len) to keep in-memory footprint minimal
+    chunks = []
+    for c in raw_chunks:
+        meta = c.get("metadata", {})
+        pruned_meta = {}
+        for k in ("is_selected", "source_query", "query_id", "position"):
+            if k in meta:
+                pruned_meta[k] = meta[k]
+        chunks.append({
+            "chunk_id": c["chunk_id"],
+            "text": c["text"],
+            "doc_id": c["doc_id"],
+            "metadata": pruned_meta
+        })
+    del raw_chunks
+    gc.collect()
     return index, chunks
