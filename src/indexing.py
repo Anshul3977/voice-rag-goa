@@ -27,7 +27,7 @@ _model = None
 def get_embedder() -> SentenceTransformer:
     global _model
     if _model is None:
-        _model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+        _model = SentenceTransformer(EMBEDDING_MODEL_NAME).half()
     return _model
 
 

@@ -4,7 +4,7 @@
 https://github.com/Anshul3977/voice-rag-goa
 
 ## Live Working Link
-**TBD** *(Hugging Face Space)* — *(Note for evaluators: If the Space has been inactive for over 48 hours, the container may take ~30–60s to wake up on the first request — this is standard free-tier behavior, not a failure).*
+**TBD** *(Render)* — *(Note for evaluators: If the service has been inactive for over 15 minutes, the free-tier container may take ~30–60s to spin up on the first request — this is standard cold-start behavior, not a failure).*
 
 ---
 
@@ -36,7 +36,7 @@ Exactly the packages in `requirements.txt` — nothing more:
 | Speech-to-Text | ElevenLabs API (`elevenlabs`) | 1.9.0 |
 | Embedding model | `sentence-transformers` / `paraphrase-multilingual-MiniLM-L12-v2` | 3.1.1 |
 | Vector store | `faiss-cpu` (IndexFlatIP, cosine sim) | 1.8.0.post1 |
-| LLM generation | Google Gemini (`google-genai` / `gemini-2.5-flash`) | 2.18.1 |
+| LLM generation | Google Gemini (`google-genai` / `gemini-3.5-flash-lite`) | 2.18.1 |
 | API server | FastAPI + uvicorn | 0.115.0 / 0.30.6 |
 | Data loading | HuggingFace `datasets` (streaming) | 2.21.0 |
 | Retries | `tenacity` | 9.0.0 |
