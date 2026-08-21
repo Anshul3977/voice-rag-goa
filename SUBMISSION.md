@@ -4,7 +4,7 @@
 https://github.com/Anshul3977/voice-rag-goa
 
 ## Live Working Link
-**TBD** *(Google Cloud Run)* — *(Note for evaluators: Deployed on Google Cloud Run serverless container runtime with scale-to-zero; cold start on first request after idle is ~5–10s).*
+https://voice-rag-goa-git-439179455620.asia-south1.run.app *(Google Cloud Run)* — *(Note for evaluators: Deployed on Google Cloud Run serverless container runtime with scale-to-zero; cold start on first request after idle is ~5–10s).*
 
 ---
 
