@@ -4,7 +4,7 @@
 https://github.com/Anshul3977/voice-rag-goa
 
 ## Live Working Link
-**TBD** *(Render)* — *(Note for evaluators: If the service has been inactive for over 15 minutes, the free-tier container may take ~30–60s to spin up on the first request — this is standard cold-start behavior, not a failure).*
+**TBD** *(Google Cloud Run)* — *(Note for evaluators: Deployed on Google Cloud Run serverless container runtime with scale-to-zero; cold start on first request after idle is ~5–10s).*
 
 ---
 
