@@ -2,8 +2,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Install CPU-only torch first for fast and clean builds
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
 
 COPY . .
 
