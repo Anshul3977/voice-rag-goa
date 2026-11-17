@@ -1,17 +1,16 @@
 """
-Three deliberately different chunking strategies, so retrieval isn't betting
-on one splitting philosophy:
+Chunking strategies, so retrieval isn't betting on one splitting philosophy:
 
-1. fixed        — fixed token/word window with overlap. Cheap, high recall,
-                   good for short MS MARCO-style passages where a passage IS
-                   basically already a good chunk.
-2. semantic      — sentence-boundary aware, greedily packs sentences up to a
-                   token budget so we never cut a sentence mid-thought.
-                   Better precision for factoid QA.
-3. metadata_aware— same as semantic, but keeps + surfaces provenance
-                   (doc_id, source_query, position) as first-class metadata
-                   used later for filtering/boosting in retrieval and for
-                   citation in the final answer.
+1. fixed         — fixed word window with overlap. Cheap, high recall, good
+                    for short MS MARCO-style passages.
+2. semantic      — sentence-boundary aware. Packs whole sentences up to a
+                    word budget so a sentence is never cut mid-thought.
+3. metadata_aware— semantic chunks plus provenance (doc_id, source_query,
+                    query_id, is_selected, position) for citations.
+
+Semantic and metadata-aware share the same sentence packing. They are stored
+as one chunk set (`metadata_aware`) so that text is not indexed twice.
+`chunk_semantic` remains the splitter that index uses.
 
 Each chunk is a dict: {chunk_id, text, doc_id, strategy, metadata}
 """

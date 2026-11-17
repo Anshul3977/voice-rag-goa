@@ -24,7 +24,6 @@ load_dotenv()
 
 from src.orchestrator import Pipeline  # noqa: E402
 from src.retrieval import Retriever  # noqa: E402
-from src.indexing import embed_texts  # noqa: E402
 from src import guardrails  # noqa: E402
 
 STORE_DIR = os.environ.get("DATA_DIR", "./data/store")
@@ -77,6 +76,9 @@ def main():
 
         for idx, q in enumerate(queries):
             unsafe = guardrails.check_unsafe_input(q)
+            if not unsafe.passed:
+                statuses["refused_unsafe"] = statuses.get("refused_unsafe", 0) + 1
+                continue
             retrieved, timings = retriever.retrieve(q, top_n=5)
             off_topic = guardrails.check_off_topic(retrieved)
             timings["total_retrieval_side_ms"] = (
@@ -124,7 +126,12 @@ def main():
     with open("benchmark/results.json", "w") as f:
         json.dump(report, f, indent=2)
 
-    lines = ["# Latency Benchmark Results\n", f"n_queries: {report['n_queries']}\n"]
+    lines = [
+        "# Latency Benchmark Results\n",
+        "Retrieval is BM25 over the committed chunk files. "
+        "Generation is omitted when `--skip-generation` is set.\n",
+        f"n_queries: {report['n_queries']}\n",
+    ]
     lines.append(f"status_breakdown: {statuses}\n")
     lines.append("\n| stage | P50 (ms) | P70 (ms) | P100/max (ms) | mean (ms) |")
     lines.append("|---|---|---|---|---|")

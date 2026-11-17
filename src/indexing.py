@@ -1,99 +1,80 @@
 """
-Builds one FAISS IndexFlatIP (cosine sim via L2-normalized embeddings) per
-chunking strategy, and persists chunk metadata alongside so retrieval can
-map vector hits back to text + provenance.
+Loads the committed chunk metadata for each strategy.
+
+The free Render instance has 512 MB of RAM. A multilingual MiniLM ONNX
+session used about 680 MB in a local check, so this service does not load a
+transformer or FAISS. Retrieval scores the same chunks with BM25.
 """
 from __future__ import annotations
 
-import gc
 import json
 import os
+import re
 from typing import Dict, List
 
-import faiss
-import numpy as np
+_TOKEN_RE = re.compile(r"[A-Za-z0-9\u0900-\u0963\u0970-\u097F]+")
 
-import torch
-from sentence_transformers import SentenceTransformer
-
-# Limit PyTorch thread pool memory overhead
-torch.set_num_threads(4)
-
-EMBEDDING_MODEL_NAME = os.environ.get("EMBEDDING_MODEL", "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
-
-_model = None
-
-
-def get_embedder() -> SentenceTransformer:
-    global _model
-    if _model is None:
-        _model = SentenceTransformer(EMBEDDING_MODEL_NAME).half()
-    return _model
+# Function words that would otherwise dominate BM25 in this Hindi/English mix.
+_STOPWORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "how",
+    "in", "is", "it", "of", "on", "or", "that", "the", "to", "was", "what",
+    "when", "where", "which", "who", "why", "with",
+    "का", "के", "की", "को", "में", "से", "पर", "और", "या", "एक", "यह", "ये",
+    "क्या", "जो", "तो", "भी", "ने", "है", "हैं", "था", "थी", "थे", "हो",
+    "नहीं", "लिए", "कर", "कि", "इस", "उस", "वे", "वह",
+}
 
 
-def embed_texts(texts: List[str], chunk_size: int = 512) -> np.ndarray:
-    model = get_embedder()
-    all_vecs = []
-    
-    # Process in sub-batches to prevent PyTorch memory spikes
-    for i in range(0, len(texts), chunk_size):
-        sub_texts = texts[i:i + chunk_size]
-        sub_vecs = model.encode(sub_texts, convert_to_numpy=True, show_progress_bar=False, batch_size=32)
-        all_vecs.append(sub_vecs)
-        if len(texts) > chunk_size:
-            gc.collect()
+def tokenize(text: str) -> List[str]:
+    """Keep Devanagari letters and combining marks inside a word.
 
-    vecs = np.vstack(all_vecs).astype("float32")
-    faiss.normalize_L2(vecs)
-    return vecs
+    Python's ``\\w`` splits Hindi words on vowel signs, which throws away the
+    term a BM25 lookup needs. Function words are dropped so a question like
+    "what is X" is scored on X.
+    """
+    return [token for token in _TOKEN_RE.findall(text.lower()) if token not in _STOPWORDS]
 
 
 def build_indices(chunk_sets: Dict[str, List[Dict]], store_dir: str) -> None:
+    """Write chunk metadata. Scoring is BM25 over these files, not a vector index."""
     os.makedirs(store_dir, exist_ok=True)
     for strategy, chunks in chunk_sets.items():
         if not chunks:
             continue
-        print(f"  Embedding {len(chunks)} chunks for strategy '{strategy}' (low memory mode)...", flush=True)
-        texts = [c["text"] for c in chunks]
-        vecs = embed_texts(texts)
-        dim = vecs.shape[1]
-        index = faiss.IndexFlatIP(dim)
-        index.add(vecs)
-
-        faiss.write_index(index, os.path.join(store_dir, f"{strategy}.faiss"))
-        with open(os.path.join(store_dir, f"{strategy}_meta.json"), "w", encoding="utf-8") as f:
-            json.dump(chunks, f, ensure_ascii=False)
-
-        del vecs, index, texts
-        gc.collect()
+        path = os.path.join(store_dir, f"{strategy}_meta.json")
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(chunks, handle, ensure_ascii=False)
+        print(f"  Wrote {len(chunks)} chunks for strategy '{strategy}'", flush=True)
 
 
-def load_index(strategy: str, store_dir: str):
-    index_path = os.path.join(store_dir, f"{strategy}.faiss")
+def index_files_present(store_dir: str) -> bool:
+    needed = ("metadata_aware_meta.json", "fixed_meta.json")
+    return all(os.path.exists(os.path.join(store_dir, name)) for name in needed)
+
+
+def load_chunks(strategy: str, store_dir: str) -> List[Dict]:
     meta_path = os.path.join(store_dir, f"{strategy}_meta.json")
-    if not (os.path.exists(index_path) and os.path.exists(meta_path)):
+    if not os.path.exists(meta_path):
         raise FileNotFoundError(
-            f"Missing index for strategy '{strategy}' in {store_dir}. "
-            f"Run data/prepare_dataset.py first."
+            f"Missing chunk metadata for strategy '{strategy}' in {store_dir}. "
+            "Run data/prepare_dataset.py first."
         )
-    index = faiss.read_index(index_path)
-    with open(meta_path, "r", encoding="utf-8") as f:
-        raw_chunks = json.load(f)
-    
-    # Prune unneeded fields (char_len, word_len) to keep in-memory footprint minimal
+    with open(meta_path, "r", encoding="utf-8") as handle:
+        raw_chunks = json.load(handle)
     chunks = []
-    for c in raw_chunks:
-        meta = c.get("metadata", {})
-        pruned_meta = {}
-        for k in ("is_selected", "source_query", "query_id", "position"):
-            if k in meta:
-                pruned_meta[k] = meta[k]
-        chunks.append({
-            "chunk_id": c["chunk_id"],
-            "text": c["text"],
-            "doc_id": c["doc_id"],
-            "metadata": pruned_meta
-        })
-    del raw_chunks
-    gc.collect()
-    return index, chunks
+    for chunk in raw_chunks:
+        meta = chunk.get("metadata", {})
+        pruned = {
+            key: meta[key]
+            for key in ("is_selected", "source_query", "query_id", "position")
+            if key in meta
+        }
+        chunks.append(
+            {
+                "chunk_id": chunk["chunk_id"],
+                "text": chunk["text"],
+                "doc_id": chunk["doc_id"],
+                "metadata": pruned,
+            }
+        )
+    return chunks

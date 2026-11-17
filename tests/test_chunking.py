@@ -1,9 +1,4 @@
-import os
-import sys
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.chunking import build_all_chunks, chunk_fixed, chunk_semantic  # noqa: E402
+from src.chunking import build_all_chunks, chunk_fixed, chunk_semantic
 
 
 def test_chunk_fixed_overlap():
@@ -25,11 +20,13 @@ def test_chunk_semantic_respects_sentences():
 
 
 def test_build_all_chunks_three_strategies():
+    """Semantic packing is stored on the metadata-aware index, not a third FAISS file."""
     passages = [{"doc_id": "1", "text": "Sentence one. Sentence two is longer here.", "source_query": "q1"}]
     result = build_all_chunks(passages)
-    assert set(result.keys()) == {"fixed", "semantic", "metadata_aware"}
+    assert set(result.keys()) == {"fixed", "metadata_aware"}
     assert all(len(v) >= 1 for v in result.values())
     assert result["metadata_aware"][0]["metadata"]["source_query"] == "q1"
+    assert result["metadata_aware"][0]["text"].strip().endswith(".")
 
 
 if __name__ == "__main__":

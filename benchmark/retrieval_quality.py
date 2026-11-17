@@ -75,7 +75,14 @@ def main():
     os.makedirs("benchmark", exist_ok=True)
     with open("benchmark/retrieval_quality.json", "w") as f:
         json.dump(
-            {"n_eval_queries": len(evaluable), "k": args.k, "recall_at_k": recall_at_k}, f, indent=2
+            {
+                "retriever": "bm25",
+                "n_eval_queries": len(evaluable),
+                "k": args.k,
+                "recall_at_k": recall_at_k,
+            },
+            f,
+            indent=2,
         )
 
 
