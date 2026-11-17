@@ -2,81 +2,202 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Voice RAG — HH Goa 2026</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Voice RAG — Anshul Palarpwar</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
+  :root { color-scheme: light; }
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #0f172a; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.2rem; }
+  .byline { color: #64748b; margin-top: 0; }
+  .banner { margin: 16px 0; padding: 12px 14px; border-radius: 8px; background: #fff7ed; color: #9a3412; }
+  .banner.ok { background: #f0fdf4; color: #166534; }
+  label { display: block; font-size: 14px; margin-bottom: 6px; }
+  form { display: flex; gap: 8px; flex-wrap: wrap; }
+  input[type="text"] { flex: 1 1 220px; font-size: 16px; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; }
   button { font-size: 16px; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; }
-  #recordBtn { background: #e11d48; color: white; }
+  #askBtn, #speakBtn { background: #0f172a; color: white; }
+  #recordBtn { background: #e11d48; color: white; margin-top: 12px; }
   #recordBtn.recording { background: #64748b; }
-  #answer { margin-top: 24px; padding: 16px; background: #f8fafc; border-radius: 8px; white-space: pre-wrap; }
+  #speakBtn { margin-top: 12px; display: none; }
+  .hint { color: #64748b; font-size: 14px; }
+  #answer { margin-top: 24px; padding: 16px; background: #f8fafc; border-radius: 8px; min-height: 1.2em; }
   .meta { color: #64748b; font-size: 13px; margin-top: 8px; }
   .refused { color: #b91c1c; }
-  .citation { font-size: 12px; color: #475569; border-left: 3px solid #cbd5e1; padding-left: 8px; margin-top: 6px; }
+  .notice { color: #9a3412; }
+  .citation { font-size: 12px; color: #475569; border-left: 3px solid #cbd5e1; padding-left: 8px; margin-top: 8px; }
+  .citation b { color: #334155; }
 </style>
 </head>
 <body>
-  <h2>🎙️ Voice RAG — MSMARCO-XI</h2>
-  <p>Press record, ask a question, release to submit.</p>
-  <button id="recordBtn">Hold to Record</button>
-  <div id="status"></div>
+  <h1>🎙️ Voice RAG</h1>
+  <p class="byline">Anshul Palarpwar · Hindi MS MARCO passages · answers with citations</p>
+  <div id="banner" class="banner">Checking configuration…</div>
+
+  <label for="query">Ask in text</label>
+  <form id="textForm">
+    <input id="query" name="query" type="text" autocomplete="off" placeholder="कॉर्पोरेशन क्या है?" />
+    <button id="askBtn" type="submit">Ask</button>
+  </form>
+  <p class="hint">Or hold the button and ask out loud. The answer can be read aloud in your browser.</p>
+  <button id="recordBtn" type="button">Hold to Record</button>
+  <button id="speakBtn" type="button">Read aloud</button>
+  <div id="status" class="meta"></div>
   <div id="answer"></div>
 
 <script>
+const btn = document.getElementById("recordBtn");
+const speakBtn = document.getElementById("speakBtn");
+const statusEl = document.getElementById("status");
+const answerEl = document.getElementById("answer");
+const bannerEl = document.getElementById("banner");
+const form = document.getElementById("textForm");
+const queryInput = document.getElementById("query");
 let mediaRecorder, chunks = [];
-const btn = document.getElementById('recordBtn');
-const statusEl = document.getElementById('status');
-const answerEl = document.getElementById('answer');
+let spokenText = "";
+
+function node(tag, className, text) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  if (text != null) el.textContent = text;
+  return el;
+}
+
+async function loadStatus() {
+  try {
+    const res = await fetch("/health");
+    const data = await res.json();
+    bannerEl.textContent = data.message || "Ready.";
+    bannerEl.classList.toggle("ok", Boolean(data.llm_configured && data.stt_configured));
+  } catch (err) {
+    bannerEl.textContent = "Could not reach the service: " + err.message;
+  }
+}
 
 async function startRecording() {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  mediaRecorder = new MediaRecorder(stream);
+  const mime = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "";
+  mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
   chunks = [];
-  mediaRecorder.ondataavailable = e => chunks.push(e.data);
-  mediaRecorder.onstop = submitAudio;
+  mediaRecorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
+  mediaRecorder.onstop = () => {
+    stream.getTracks().forEach((track) => track.stop());
+    submitAudio();
+  };
   mediaRecorder.start();
-  btn.classList.add('recording');
-  btn.textContent = 'Recording... release to stop';
+  btn.classList.add("recording");
+  btn.textContent = "Recording… release to stop";
 }
 
 function stopRecording() {
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-  btn.classList.remove('recording');
-  btn.textContent = 'Hold to Record';
+  if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+  btn.classList.remove("recording");
+  btn.textContent = "Hold to Record";
 }
 
 async function submitAudio() {
-  statusEl.textContent = 'Transcribing + retrieving + generating...';
-  answerEl.innerHTML = '';
-  const blob = new Blob(chunks, { type: 'audio/webm' });
-  const form = new FormData();
-  form.append('audio', blob, 'query.webm');
-
+  statusEl.textContent = "Transcribing…";
+  answerEl.replaceChildren();
+  speakBtn.style.display = "none";
+  const blob = new Blob(chunks, { type: chunks[0] ? chunks[0].type : "audio/webm" });
+  const formData = new FormData();
+  const ext = (blob.type || "").includes("webm") ? "webm" : "wav";
+  formData.append("audio", blob, "query." + ext);
   try {
-    const res = await fetch('/ask', { method: 'POST', body: form });
-    const data = await res.json();
-    render(data);
+    const res = await fetch("/ask", { method: "POST", body: formData });
+    render(await res.json());
   } catch (err) {
-    statusEl.textContent = 'Error: ' + err;
+    statusEl.textContent = "Error: " + err.message;
+  }
+}
+
+async function submitText(event) {
+  event.preventDefault();
+  const query = queryInput.value.trim();
+  if (!query) return;
+  statusEl.textContent = "Retrieving…";
+  answerEl.replaceChildren();
+  speakBtn.style.display = "none";
+  try {
+    const res = await fetch("/ask-text", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+    });
+    const data = await res.json();
+    render({ transcript: query, ...data });
+  } catch (err) {
+    statusEl.textContent = "Error: " + err.message;
   }
 }
 
 function render(data) {
-  statusEl.textContent = 'Heard: "' + data.transcript + '"';
-  if (data.status !== 'ok') {
-    answerEl.innerHTML = `<div class="refused"><b>Not answered (${data.status})</b><br>${data.refusal_reason || data.error || ''}</div>`;
+  answerEl.replaceChildren();
+  spokenText = "";
+  if (data.transcript) statusEl.textContent = "Heard: “" + data.transcript + "”";
+  else statusEl.textContent = "";
+
+  const status = data.status;
+  if (status === "stt_unconfigured" || status === "error") {
+    answerEl.append(node("div", "refused", data.error || data.detail || "Request failed."));
     return;
   }
-  let html = `<b>Answer:</b> ${data.answer}<div class="meta">confidence: ${(data.confidence ?? 0).toFixed(2)}</div>`;
-  (data.citations || []).forEach(c => {
-    html += `<div class="citation">[${c.strategy}] ${c.text.slice(0, 160)}...</div>`;
-  });
-  answerEl.innerHTML = html;
+  if (status && status.startsWith("refused")) {
+    const box = node("div", "refused");
+    box.append(node("b", null, "Not answered (" + status + ")"));
+    box.append(document.createElement("br"));
+    box.append(document.createTextNode(data.refusal_reason || data.error || ""));
+    answerEl.append(box);
+    addCitations(data.citations || []);
+    return;
+  }
+
+  const answer = data.answer || "";
+  const label = status === "retrieval_only" ? "Retrieved passages" : "Answer";
+  const klass = status === "retrieval_only" ? "notice" : null;
+  const lead = node("div", klass);
+  lead.append(node("b", null, label + ": "));
+  lead.append(document.createTextNode(answer));
+  answerEl.append(lead);
+  if (data.confidence != null) {
+    answerEl.append(node("div", "meta", "confidence: " + Number(data.confidence).toFixed(2)));
+  }
+  addCitations(data.citations || []);
+  spokenText = answer;
+  speakBtn.style.display = answer ? "inline-block" : "none";
 }
 
-btn.addEventListener('mousedown', startRecording);
-btn.addEventListener('mouseup', stopRecording);
-btn.addEventListener('touchstart', e => { e.preventDefault(); startRecording(); });
-btn.addEventListener('touchend', e => { e.preventDefault(); stopRecording(); });
+function addCitations(citations) {
+  citations.forEach((citation) => {
+    const line = node("div", "citation");
+    line.append(node("b", null, "[" + citation.strategy + "] "));
+    const text = citation.text || "";
+    line.append(document.createTextNode(text.length > 220 ? text.slice(0, 220) + "…" : text));
+    answerEl.append(line);
+  });
+}
+
+function speak() {
+  if (!spokenText || !window.speechSynthesis) {
+    statusEl.textContent = "This browser has no speech synthesis.";
+    return;
+  }
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(new SpeechSynthesisUtterance(spokenText));
+}
+
+form.addEventListener("submit", submitText);
+speakBtn.addEventListener("click", speak);
+btn.addEventListener("mousedown", () => {
+  startRecording().catch((err) => { statusEl.textContent = "Microphone unavailable: " + err.message; });
+});
+btn.addEventListener("mouseup", stopRecording);
+btn.addEventListener("mouseleave", () => { if (btn.classList.contains("recording")) stopRecording(); });
+btn.addEventListener("touchstart", (event) => {
+  event.preventDefault();
+  startRecording().catch((err) => { statusEl.textContent = "Microphone unavailable: " + err.message; });
+});
+btn.addEventListener("touchend", (event) => { event.preventDefault(); stopRecording(); });
+loadStatus();
 </script>
 </body>
 </html>

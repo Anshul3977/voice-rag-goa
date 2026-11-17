@@ -1,7 +1,6 @@
 """
-Downloads ai4bharat/MSMARCO-XI, subsets it to a manageable number of passages
-for a hackathon-scale FAISS index, and hands off to src/indexing.py to build
-all three chunking-strategy indices.
+Downloads ai4bharat/MSMARCO-XI, subsets it, and writes the chunk files
+BM25 retrieval reads.
 
 ACTUAL schema (verified against the HF dataset card and loading script):
 
@@ -39,8 +38,6 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from datasets import load_dataset  # noqa: E402
-from huggingface_hub import hf_hub_download  # noqa: E402
 from src.chunking import build_all_chunks  # noqa: E402
 from src.indexing import build_indices  # noqa: E402
 
@@ -76,6 +73,9 @@ def load_passages(lang: str, n_queries: int, use_translated: bool = True):
         raise SystemExit(
             f"'{lang}' is not a recognised --lang code. Valid: {sorted(VALID_LANGS)}"
         )
+
+    from datasets import load_dataset
+    from huggingface_hub import hf_hub_download
 
     lang_prefix = _LANG_PREFIX[lang]
     file_stem = _LANG_FILE[lang]
@@ -173,12 +173,12 @@ def main():
         with open(raw_path, "w", encoding="utf-8") as f:
             json.dump(passages, f, ensure_ascii=False)
 
-    print("Building chunks (fixed / semantic / metadata-aware) ...", flush=True)
+    print("Building chunks (fixed window + metadata-aware semantic) ...", flush=True)
     chunk_sets = build_all_chunks(passages)
     for strategy, chunks in chunk_sets.items():
         print(f"  {strategy}: {len(chunks)} chunks", flush=True)
 
-    print("Building FAISS indices ...", flush=True)
+    print("Writing chunk metadata ...", flush=True)
     build_indices(chunk_sets, store_dir=args.store)
     print(f"Done. Indices + metadata written to {args.store}", flush=True)
 

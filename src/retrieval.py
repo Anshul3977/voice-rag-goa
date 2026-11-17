@@ -1,18 +1,17 @@
 """
-Retrieves from all three strategy indices and merges results, rather than
-committing to a single chunking philosophy. Each strategy contributes
-top-k candidates; scores are weighted (semantic/metadata_aware slightly
-favored for precision, fixed included for recall) then deduplicated by
-underlying doc_id before returning the final top_n.
+Retrieves from the fixed-window and metadata-aware chunk sets and merges them.
+
+Semantic chunks live in the metadata-aware set, so they are not searched
+twice. Scores are BM25, weighted (metadata-aware favored, fixed included for
+recall) and deduplicated by doc_id before the final top_n.
 """
 from __future__ import annotations
 
-import os
+import math
 import time
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List
-
-from src.indexing import embed_texts, load_index
 
 STRATEGY_WEIGHTS = {
     "metadata_aware": 1.0,
@@ -30,45 +29,81 @@ class RetrievedChunk:
     metadata: dict = field(default_factory=dict)
 
 
+class _BM25:
+    def __init__(self, chunks: List[dict], k1: float = 1.5, b: float = 0.75):
+        from src.indexing import tokenize
+
+        self.chunks = chunks
+        self.k1 = k1
+        self.b = b
+        self.doc_len: List[int] = []
+        self.postings: Dict[str, List[tuple]] = defaultdict(list)
+        for doc_id, chunk in enumerate(chunks):
+            counts: Dict[str, int] = defaultdict(int)
+            tokens = tokenize(chunk["text"])
+            for token in tokens:
+                counts[token] += 1
+            self.doc_len.append(len(tokens) or 1)
+            for token, freq in counts.items():
+                self.postings[token].append((doc_id, freq))
+        self.avgdl = (sum(self.doc_len) / len(self.doc_len)) if self.doc_len else 1.0
+        self.n_docs = len(chunks)
+
+    def scores(self, query_tokens: List[str]) -> Dict[int, float]:
+        totals: Dict[int, float] = defaultdict(float)
+        for token in set(query_tokens):
+            hits = self.postings.get(token)
+            if not hits:
+                continue
+            df = len(hits)
+            idf = math.log(1.0 + (self.n_docs - df + 0.5) / (df + 0.5))
+            for doc_id, freq in hits:
+                denom = freq + self.k1 * (1 - self.b + self.b * self.doc_len[doc_id] / self.avgdl)
+                totals[doc_id] += idf * (freq * (self.k1 + 1)) / denom
+        return totals
+
+
 class Retriever:
     def __init__(self, store_dir: str):
+        from src.indexing import load_chunks
+
         self.store_dir = store_dir
         self._loaded = {}
         for strategy in STRATEGY_WEIGHTS:
             try:
-                self._loaded[strategy] = load_index(strategy, store_dir)
+                self._loaded[strategy] = _BM25(load_chunks(strategy, store_dir))
             except FileNotFoundError:
                 pass
         if not self._loaded:
             raise RuntimeError(
-                f"No indices found in {store_dir}. Run data/prepare_dataset.py first."
+                f"No chunk metadata found in {store_dir}. Run data/prepare_dataset.py first."
             )
 
     def retrieve(self, query: str, top_k_per_strategy: int = 5, top_n: int = 5):
+        from src.indexing import tokenize
+
         t0 = time.perf_counter()
-        q_vec = embed_texts([query])
+        query_tokens = tokenize(query)
         embed_ms = (time.perf_counter() - t0) * 1000
 
         t1 = time.perf_counter()
         candidates: List[RetrievedChunk] = []
-        for strategy, (index, chunks) in self._loaded.items():
-            k = min(top_k_per_strategy, index.ntotal)
-            if k == 0:
+        for strategy, index in self._loaded.items():
+            ranked = index.scores(query_tokens)
+            if not ranked:
                 continue
-            scores, idxs = index.search(q_vec, k)
-            for score, idx in zip(scores[0], idxs[0]):
-                if idx < 0:
-                    continue
-                c = chunks[idx]
+            top = sorted(ranked.items(), key=lambda item: item[1], reverse=True)[:top_k_per_strategy]
+            for doc_id, score in top:
+                chunk = index.chunks[doc_id]
                 weighted = float(score) * STRATEGY_WEIGHTS.get(strategy, 1.0)
                 candidates.append(
                     RetrievedChunk(
-                        chunk_id=c["chunk_id"],
-                        text=c["text"],
-                        doc_id=c["doc_id"],
+                        chunk_id=chunk["chunk_id"],
+                        text=chunk["text"],
+                        doc_id=chunk["doc_id"],
                         strategy=strategy,
                         score=weighted,
-                        metadata=c.get("metadata", {}),
+                        metadata=chunk.get("metadata", {}),
                     )
                 )
 

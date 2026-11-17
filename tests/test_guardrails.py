@@ -1,10 +1,5 @@
-import os
-import sys
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src import guardrails  # noqa: E402
-from src.retrieval import RetrievedChunk  # noqa: E402
+from src import guardrails
+from src.retrieval import RetrievedChunk
 
 
 def test_unsafe_input_blocked():
@@ -19,19 +14,19 @@ def test_safe_input_passes():
 
 
 def test_off_topic_low_score_refused():
-    chunks = [RetrievedChunk(chunk_id="a", text="irrelevant", doc_id="1", strategy="fixed", score=0.05)]
+    chunks = [RetrievedChunk(chunk_id="a", text="irrelevant", doc_id="1", strategy="fixed", score=1.0)]
     result = guardrails.check_off_topic(chunks)
     assert result.passed is False
 
 
 def test_off_topic_high_score_passes():
-    chunks = [RetrievedChunk(chunk_id="a", text="relevant", doc_id="1", strategy="fixed", score=0.9)]
+    chunks = [RetrievedChunk(chunk_id="a", text="relevant", doc_id="1", strategy="fixed", score=8.0)]
     result = guardrails.check_off_topic(chunks)
     assert result.passed is True
 
 
 def test_groundedness_invalid_citation_blocked():
-    chunks = [RetrievedChunk(chunk_id="real_id", text="Paris is the capital of France.", doc_id="1", strategy="fixed", score=0.9)]
+    chunks = [RetrievedChunk(chunk_id="real_id", text="Paris is the capital of France.", doc_id="1", strategy="fixed", score=8.0)]
     result = guardrails.check_groundedness(
         "Paris is the capital.", ["fake_id"], chunks, self_reported_confidence=0.9
     )
@@ -40,7 +35,7 @@ def test_groundedness_invalid_citation_blocked():
 
 
 def test_groundedness_good_overlap_passes():
-    chunks = [RetrievedChunk(chunk_id="real_id", text="Paris is the capital of France.", doc_id="1", strategy="fixed", score=0.9)]
+    chunks = [RetrievedChunk(chunk_id="real_id", text="Paris is the capital of France.", doc_id="1", strategy="fixed", score=8.0)]
     result = guardrails.check_groundedness(
         "Paris is the capital of France.", ["real_id"], chunks, self_reported_confidence=0.9
     )

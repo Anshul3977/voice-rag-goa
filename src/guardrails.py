@@ -5,10 +5,9 @@ Three guardrail checkpoints in the pipeline:
    screen for self-harm, violence-instruction, and PII-extraction style
    prompts. Fails closed (refuses) rather than guessing intent.
 
-2. check_off_topic(query, retrieved) -- after retrieval, before generation.
-   If the best retrieval score is below threshold, the corpus almost
-   certainly doesn't cover this query -- refuse instead of letting the LLM
-   improvise an ungrounded answer.
+2. check_off_topic(retrieved) -- after retrieval, before generation.
+   If the best BM25 score is below threshold, the corpus almost certainly
+   doesn't cover this query -- refuse instead of letting the LLM improvise.
 
 3. check_groundedness(answer, retrieved) -- after generation. Verifies the
    model's cited chunk_ids are real, and does a lexical-overlap sanity check
@@ -34,7 +33,9 @@ UNSAFE_PATTERNS = [
 ]
 _UNSAFE_RE = [re.compile(p, re.IGNORECASE) for p in UNSAFE_PATTERNS]
 
-OFF_TOPIC_SCORE_THRESHOLD = 0.30  # cosine sim on normalized MiniLM embeddings
+# BM25 on this Hindi subset: in-corpus questions scored above ~7, and a
+# query with no shared terms scores 0. 4 sits between those.
+OFF_TOPIC_SCORE_THRESHOLD = 4.0
 GROUNDEDNESS_OVERLAP_THRESHOLD = 0.15  # fraction of answer words present in cited chunks
 
 
